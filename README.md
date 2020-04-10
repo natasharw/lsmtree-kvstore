@@ -2,10 +2,10 @@
 
 A rudimentary write-optimised key-value store using the Go standard library, with a LSM-tree (Log-Structured Merge tree) structure. Simple SET and GET key operations are accessible from HTTP endpoints. <b><i> This project is for learning only. </i></b>
 
-<b> Why a LSM-tree design? </b>  
+<b> LSM-trees overview </b>  
 LSM-trees deal with fast sequential writes well as the data is append-only. Searching for existing records does not need to happen on write. There is a cost to read efficiency as data has to be collated from multiple places. This can be improved with an optimised file hierarchy through merging and compaction algorithms. Popular key-value stores like RocksDB use LSM-trees to provide efficiency for write-heavy workloads such as transactional logs.
 
-## Pre-requisites
+## Prerequisites
 - Install [Go](https://golang.org/doc/install)
 
 ## Install
