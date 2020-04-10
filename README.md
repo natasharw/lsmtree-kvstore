@@ -1,4 +1,4 @@
-# LSM-tree key-value store
+# LSM-tree key-value store (WIP)
 
 A rudimentary write-optimised key-value store using the Go standard library, with a LSM-tree (Log-Structured Merge tree) structure. Simple SET and GET key operations are accessible from HTTP endpoints. <b><i> This project is for learning only. </i></b>
 
@@ -43,5 +43,5 @@ A Bloom filter could be added to each SSTable to identify the keys that probably
 #### Add DELETE key functionality
 #### Concurrent execution  
 Use goroutines to support multiple concurrent reads or writes
-#### Redesign storage components (C0, C1+) as optimised data structures
-The memtable could be a balanced binary/AVL tree
+#### Redesign storage components (C0, C1+) as individually optimised data structures
+E.g. memtable (C0): sorted array -> binary/AVL tree
