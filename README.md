@@ -15,10 +15,11 @@ LSM-trees deal with fast sequential writes well as the data is append-only. Sear
 ## Usage
 #### Run the server
 `$ go run main.go`
-#### Set a key
-Go to `localhost:8000/get?key=yourkey` in browser
-#### Get a key
+#### Set a key (WIP)
 Go to `localhost:8000/set?yourkey=yourvalue` in browser
+#### Get a key (WIP)
+Go to `localhost:8000/get?key=yourkey` in browser
+
 
 ## Set key explained
 * Key-value pair initially cached in local memory in a memtable (C0)
