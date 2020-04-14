@@ -29,8 +29,9 @@ func PutKey(buffer *storage.Memtable) http.Handler {
 			fmt.Fprintln(w, k) //[TODO] placeholder only - remove
 			fmt.Fprintln(w, v) // [TODO] placeholder only - remove
 
-			key := StrToBytes(k)
-			val := StrsToBytes(v)
+			key := k
+			// key := StrToBytes(k)
+			val := StrToBytes(v)
 			storage.Put(key, val)
 		}
 	})
