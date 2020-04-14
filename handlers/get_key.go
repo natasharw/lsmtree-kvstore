@@ -17,8 +17,9 @@ func GetKey(buffer *storage.Memtable) http.Handler {
 			return
 		}
 
-		key := StrToBytes(passed)
-		value, err := storage.GetKey(key)
+		key := passed
+		// key := StrToBytes(passed)
+		value, err := storage.Get(key)
 
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

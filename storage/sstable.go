@@ -1,7 +1,7 @@
 package storage
 
+// SSTable : represents a Sorted String Table on disk
 type SSTable struct {
-	//define what it is
 	d map[string][]byte
 }
 
@@ -9,20 +9,22 @@ type SSTable struct {
 WRITE OPERATIONS
 */
 
+// SSTableInit : creates a new SStable from a given memtable
 func SSTableInit(m *Memtable) (ss *SSTable) {
 	return &SSTable{d: make(map[string][]byte)}
 }
 
-func MergeSort(*SSTable, *LsmTree) {
-	// takes a newly created SSTable and merges it into the existing lsm tree
+// MergeSort : and merges an SStable into existing disk structure
+func MergeSort(*SSTable) (int, error) {
+	return 0, nil
 }
 
 /*
 READ OPERATIONS
 */
 
-func SearchSSTable(key []byte) []byte {
-	// given a key, search in the SSTable index to see if the key exists and return to
+// SearchSSTable : search in index of one SSTable for given key
+func SearchSSTable(key string) []byte {
 	return []byte{1, 2, 3}
 }
 
@@ -30,9 +32,10 @@ func SearchSSTable(key []byte) []byte {
 OTHER OPERATIONS
 */
 
-func Compaction() {
+// Compaction : reorganises SSTables in order to
+func Compaction() (int, error) {
 	// reorganize the data to make it more efficient
 	// undertake level-based compaction
 	// when data reaches growthFactor --> merge into row below
-	// this
+	return 0, nil
 }

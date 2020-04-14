@@ -6,8 +6,6 @@ import (
 	"testing"
 )
 
-// [TODO]
-
 func TestPutKey(t *testing.T) {
 	t.Parallel()
 	req, err := http.NewRequest("POST", "set/", nil)
