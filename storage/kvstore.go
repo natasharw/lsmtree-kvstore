@@ -11,8 +11,7 @@ const (
 	LvlGrowthFactor int = 2
 )
 
-// Storage :
-type Storage interface {
+type storage interface {
 	Get(key []byte) ([]byte, error)
 	Set(key []byte, value []byte) error
 }
@@ -30,14 +29,13 @@ WRITE OPERATIONS
 
 // Put : Main function to set a key in the key-value store
 // Returns 0 if sucessful
-func Put(key string, value []byte) (int, error) {
+func Put(mt *Memtable, key string, value []byte) (int, error) {
 
-	InsertToMemtable(key, value)
+	InsertToMemtable(mt, key, value)
 
-	m := MemtableInit() // [TODO] look for memtable instead of instantiating
-	switch f := IsMemtableFull(m); f {
+	switch f := IsMemtableFull(mt); f {
 	case true:
-		Flush(m)
+		Flush(mt)
 		return fmt.Printf("%s: %s added to buffer and buffer written to disk", key, value)
 	case false:
 		return fmt.Printf("%s: %s added to buffer", key, value)
@@ -47,8 +45,8 @@ func Put(key string, value []byte) (int, error) {
 }
 
 // Flush : takes the current memtable and flushes to disk
-func Flush(m *Memtable) int {
-	s := SSTableInit(m)
+func Flush(mt *Memtable) int {
+	s := SSTableInit(mt)
 	MergeSort(s)
 	return 0
 }
@@ -58,9 +56,8 @@ READ OPERATIONS
 */
 
 // Get : main function to get a key's value from the key-value store
-func Get(key string) ([]byte, error) {
-	m := MemtableInit() // this will absolutely not be done here
-	mResults, err := SearchMemtable(key, m)
+func Get(mt *Memtable, key string) ([]byte, error) {
+	mResults, err := SearchMemtable(mt, key)
 	dResults, err := SearchDisk(key)
 
 	if err != nil {

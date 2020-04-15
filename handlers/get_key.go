@@ -7,7 +7,8 @@ import (
 	"github.com/natasharw/lsmtree-kvstore/storage"
 )
 
-func GetKey(buffer *storage.Memtable) http.Handler {
+// GetKey : takes a key passed in as a parameter and prints its value to browser if it exists in the store
+func GetKey(buffer *storage.Memtable) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		passed := req.URL.Query().Get("key")
 		defer req.Body.Close()
@@ -19,7 +20,7 @@ func GetKey(buffer *storage.Memtable) http.Handler {
 
 		key := passed
 		// key := StrToBytes(passed)
-		value, err := storage.Get(key)
+		value, err := storage.Get(buffer, key)
 
 		if err != nil {
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
