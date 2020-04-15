@@ -1,18 +1,23 @@
 package handlers
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/natasharw/lsmtree-kvstore/storage"
 )
 
+// PutKey : takes a key-value pair passed in as a parameter and passes it the store, printing message to user
 func PutKey(buffer *storage.Memtable) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		fmt.Println("SET params were:", req.URL.Query())
+		log.Println("Handling set key request")
+		log.Println("Params provided:", req.URL.Query())
+
+		log.Println("Parsing query: ", req.URL.Query())
 		raw := req.URL.RawQuery
 		parsed, err := url.ParseQuery(raw)
+		log.Println("Parsed: ", parsed)
 
 		defer req.Body.Close()
 
@@ -25,14 +30,17 @@ func PutKey(buffer *storage.Memtable) http.Handler {
 			return
 		}
 
+		// iterate over all passed key-value pairs
+		i := 1
+		ttl := len(parsed)
 		for k, v := range parsed {
-			fmt.Fprintln(w, k) //[TODO] placeholder only - remove
-			fmt.Fprintln(w, v) // [TODO] placeholder only - remove
+			log.Printf("Handling key-value pair %d of total pairs %d", i, ttl)
+			log.Printf("Key: %s. Value: %s", k, v)
 
-			key := k
-			// key := StrToBytes(k)
-			val := StrToBytes(v)
-			storage.Put(key, val)
+			value := StrToBytes(v)
+			log.Printf("Passing key-value to store")
+			storage.Put(buffer, k, value)
+			i++
 		}
 	})
 }

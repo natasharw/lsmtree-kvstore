@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	// instantiate a memtable to start the store
 	buffer := storage.MemtableInit()
 
 	mux := http.NewServeMux()
