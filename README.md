@@ -4,12 +4,10 @@ An attempt at implementing a primitive LSM-tree key/value store in Go
 
 ## Overview
 
-
 A rudimentary write-optimised key/value store using the Go standard library, with a LSM-tree (Log-Structured Merge tree) structure. <b>For learning only and is currently WIP.</b>
 
-
 <b>Some details</b>
-* Key-value pairs initially cached in local memory `Memtable (L0)`
+* Key-value pairs initially cached in local memory `Memtable (L0)` implemented here as a sorted map of key-value pairs
 * Once full, `Memtable (L0)` gets flushed to disk as a `SSTable` (sorted string table) which is immutable
 * A new `SStable` gets merged into the tree which is a sequence of levels increasing in size (`L1`-`Ln`)
 * `SSTables` on disk are periodically re-arranged by compaction
