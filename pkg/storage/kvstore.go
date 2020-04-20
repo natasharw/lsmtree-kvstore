@@ -19,20 +19,20 @@ type storage interface {
 // KVStore : represents the entirety of a key-value store
 type KVStore struct {
 	buffer *Memtable
-	l      int
-	f      int
+	levels int
+	fanout int
 }
 
 // NewKVStore : instantiates a new key-value store with some default values
 func NewKVStore() *KVStore {
 	log.Printf("Instantiating a new key-value store")
-	log.Printf("Setting attributes: Memtable as buffer, 1 level (C0) and level growth factor of %d", fanout)
+	log.Printf("Setting attributes: Memtable as buffer, initial levels as %d and level growth factor of %d", levels, fanout)
 
 	mt := new(Memtable)
 	kvs := &KVStore{
 		buffer: mt,
-		l:      initL,
-		f:      fanout}
+		levels: initL,
+		fanout: fanout}
 
 	log.Printf("Key-value store instantiated")
 	return kvs
