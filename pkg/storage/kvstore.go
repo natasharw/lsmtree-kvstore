@@ -7,8 +7,6 @@ import (
 const (
 	// fanout : ratio between levels of LSM-tree e.g. C2 = C1 * fanout
 	fanout int = 2
-	// initL : inital levels of LSM-tree. 1 = Memtable (C0) only, 2 = Memtable (C0) + C1
-	initL int = 1
 )
 
 type storage interface {
@@ -26,12 +24,11 @@ type KVStore struct {
 // NewKVStore : instantiates a new key-value store with some default values
 func NewKVStore() *KVStore {
 	log.Printf("Instantiating a new key-value store")
-	log.Printf("Setting attributes: Memtable as buffer, initial levels as %d and level growth factor of %d", levels, fanout)
+	log.Printf("Setting attributes: Memtable as buffer and level growth factor of %d", fanout)
 
 	mt := new(Memtable)
 	kvs := &KVStore{
 		buffer: mt,
-		levels: initL,
 		fanout: fanout}
 
 	log.Printf("Key-value store instantiated")
@@ -43,11 +40,13 @@ WRITE OPERATIONS
 */
 
 // Set : Main function to set a key in the key-value store
-func (kvs *KVStore) Set(key string, value []byte) error {
+func (kvs *KVStore) Set(key string, value string) error {
 	log.Printf("Setting key %s", key)
 	mt := kvs.buffer
 
-	mt.InsertToMemtable(key, value)
+	val := StrToBytes(value)
+
+	mt.InsertToMemtable(key, val)
 
 	switch f := mt.IsMemtableFull(); f {
 	case true:
