@@ -9,7 +9,7 @@ A rudimentary write-optimised key/value store using the Go standard library, wit
 <b> LSM-tree overview </b>  
 * Deal with fast sequential writes well
 * Searching for existing records does not need to happen on write
-* Key-value pairs initially cached in local memory `Memtable (C0)`
+* Key-value pairs initially cached in local memory `Memtable (C0)` implemented here as a sorted map of key-value pairs
 * `Memtable` gets flushed to disk as an immutable `SStable` (sorted string table) once full 
 * Merging and compaction algorithms are used to store `SSTables` efficiently between levels of tree (`C1`-`Cn`)
 * Good for write-heavy workloads such as transactional logs
