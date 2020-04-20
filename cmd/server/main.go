@@ -50,6 +50,7 @@ func process() {
 		val := c[2]
 		store.Set(key, val)
 	case "exit":
+		log.Printf("Thanks for visiting the key-value store. Exiting.")
 		os.Exit(0)
 	default:
 		fmt.Print("Incorrect command supplied. hint: see README and try again")
