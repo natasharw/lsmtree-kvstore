@@ -1,23 +1,57 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"log"
-	"net/http"
+	"os"
+	"strings"
 
-	"github.com/natasharw/lsmtree-kvstore/handlers"
-	"github.com/natasharw/lsmtree-kvstore/storage"
+	"github.com/natasharw/lsmtree-kvstore/pkg/storage"
 )
 
 func main() {
-	// instantiate a memtable to start the store
-	buffer := storage.MemtableInit()
+	fmt.Println("Welcome to the key-value store. Initialising...")
+	store := storage.NewKVStore()
+	fmt.Println("Ready")
+	run()
+	defer fmt.Println("Exiting key-value store")
+}
 
-	mux := http.NewServeMux()
+func run() {
+	for {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Enter command: ")
+		cmd, err := reader.ReadString('\n')
+		if err != nil {
+			panic(err)
+		}
+		log.Printf("Input received: %s", cmd)
+		process(cmd)
+	}
+}
 
-	mux.Handle("/", handlers.DefaultPage(buffer)) // [TODO] - change so not called superflously from other endpoints
-	mux.Handle("/get", handlers.GetKey(buffer))
-	mux.Handle("/set", handlers.PutKey(buffer))
-
-	log.Println("Listening on port 8010....")
-	log.Fatal(http.ListenAndServe(":8010", mux))
+func process() {
+	c := strings.Fields(cmd)
+	switch c[0] {
+	case "get":
+		if len(c) != 1 {
+			fmt.Print("Incorrect command supplied. please use \"get <yourkey>\"")
+		}
+		log.Printf("Processing get request")
+		key := c[1]
+		store.Get(key)
+	case "set":
+		if len(c) != 2 {
+			fmt.Print("Incorrect command supplied. please use \"set <yourkey> <yourvalue>\"")
+		}
+		log.Printf("Processing set request")
+		key := c[1]
+		val := c[2]
+		store.Set(key, val)
+	case "exit":
+		os.Exit(0)
+	default:
+		fmt.Print("Incorrect command supplied. hint: see README and try again")
+	}
 }

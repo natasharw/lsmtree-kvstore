@@ -5,16 +5,16 @@ import (
 	"log"
 )
 
-// Memtable : in-memory mutable data structure: sorted map of keys and values
+const (
+	// MaxMem : sets the maximum amount of key-value pairs before memtable flushes to disk
+	MaxMem int = 1000
+)
+
+// Memtable : in-memory mutable data structure: here a sorted map of key-value pairs
 type Memtable struct {
-	m   map[string][]byte
+	kv  map[string][]byte
 	max int
 }
-
-const (
-	// MaxMemEntries : sets the maximum amount of key-value pairs before memtable flushes to disk
-	MaxMemEntries int = 1000
-)
 
 /*
 WRITE OPERATIONS
@@ -24,60 +24,67 @@ WRITE OPERATIONS
 func MemtableInit() (m *Memtable) {
 	log.Printf("Creating a memtable (C0)")
 	memAddress := &Memtable{
-		m:   make(map[string][]byte),
-		max: MaxMemEntries}
+		kv:  make(map[string][]byte),
+		max: MaxMem}
 	log.Printf("Key-value store initialised with a memtable")
+
 	return memAddress
+
 }
 
 // InsertToMemtable : inserts a key and value to memtable
-func InsertToMemtable(mt *Memtable, key string, value []byte) (int error) {
+func (mt *Memtable) InsertToMemtable(key string, value []byte) (int error) {
 
 	log.Printf("Handling setting key \"%s\" in memtable", key)
 
-	check, err := SearchMemtable(mt, key)
+	value, p, err := mt.SearchMemtable(key)
 
-	if len(check) == 0 {
+	if !p {
 		log.Printf("Key \"%s\" does not exist in memtable already", key)
-		_, err := InsertKeyInOrder(mt, key)
+		err := mt.insertKey(key)
 		if err != nil {
 			return errors.New("Failed to insert key in memtable")
 		}
 	}
 
-	_, err = SetValueOnKey(mt, key, value)
+	err = mt.setValueOnKey(key, value)
 
 	if err != nil {
 		return errors.New("Failed to set value against key in memtable")
 	}
+
 	return nil
 }
 
-// InsertKeyInOrder : inserts key in correct place in memtable using binary search
+// insertKey : inserts key in correct place in memtable using binary search
 // [TODO] - binary search to insert key in correct place
-func InsertKeyInOrder(mt *Memtable, key string) (int, error) {
+func (mt *Memtable) insertKey(key string) error {
 	log.Printf("Finding correct place for key \"%s\" in memtable", key)
-	return 0, nil
+
+	return nil
 }
 
-// SetValueOnKey : sets a value against a key in a memtable
-func SetValueOnKey(mt *Memtable, key string, value []byte) (int, error) {
+// setValueOnKey : sets a value against a key in a memtable
+func (mt *Memtable) setValueOnKey(key string, value []byte) error {
 	log.Printf("Setting value of key \"%s\" in memtable", key)
-	mt.m[key] = value
+	mt.kv[key] = value
 	log.Printf("Successfully set key \"%s\" to %v in memtable", key, value)
-	return 0, nil
+
+	return nil
 }
 
 // IsMemtableFull : returns true if memtable entries equals max constant
-func IsMemtableFull(mt *Memtable) bool {
+func (mt *Memtable) IsMemtableFull() bool {
 	log.Printf("Checking if memtable is full")
-	mtEntries := len(mt.m)
+	mtEntries := len(mt.kv)
 	if mtEntries < mt.max {
 		log.Printf("Memtable not full. Status: %d out of max %d", mtEntries, mt.max)
+
 		return false
 	}
 
 	log.Printf("Memtable is full. Status: %d out of max %d", mtEntries, mt.max)
+
 	return true
 }
 
@@ -86,16 +93,17 @@ READ OPERATIONS
 */
 
 // SearchMemtable : given a key, tries to find an entry for it in memtable
-func SearchMemtable(mt *Memtable, key string) ([]byte, error) {
+func (mt *Memtable) SearchMemtable(key string) ([]byte, bool, error) {
 	log.Printf("Searching memtable for key \"%s\"", key)
 
-	//[TODO] func (m *Memtable) func SearchMemtable(key []byte, m *Memtable) ([]byte, error) ???
+	value, p := mt.kv[key]
 
-	value, ok := mt.m[key]
-	if !ok {
-		return nil, errors.New("Error finding key in memtable")
+	if !p {
+		log.Printf("%s key not found in memtable", key)
+		return nil, false, nil
 	}
 
-	log.Printf("Found value \"%s\" for key \"%s\"", value, key)
-	return value, nil
+	log.Printf("Found value \"%v\" for key \"%s\"", value, key)
+	return value, true, nil
+
 }
