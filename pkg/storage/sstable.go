@@ -6,24 +6,12 @@ import (
 	"os"
 )
 
-// SSTable : represents a Sorted String Table on disk
-// d : key-value pairs (sequence of blocks); bs : block size; index : key-offset pairs
+// SSTable : represents a Sorted String Table on disk (kv : key-value pairs; index : key-offset pairs)
 type SSTable struct {
-	// [TODO] - change this to sequence of blocks
 	fname string
 	kv    map[string][]byte
-	bs    int
 	index map[string][]byte
 }
-
-type block struct {
-	d map[string][]byte
-}
-
-const (
-	// blockSz = size of blocks in kb
-	blockSz = 32
-)
 
 /*
 WRITE OPERATIONS
@@ -31,52 +19,67 @@ WRITE OPERATIONS
 
 // NewSSTable : creates a new SStable from a given memtable
 func (mt *Memtable) NewSSTable() (ss *SSTable) {
-	// need to create a new memtable instance while I am doing this
-	log.Printf("Creating a new SSTable")
-	log.Printf("SSTable attributes. Block size: BLOCK_SIZE")
 
-	//TODO group records into blocks and write to disk
+	log.Printf("Creating a new SSTable")
+
+	// TODO group records into blocks and write to disk
+	// create a new memtable instance while I am doing this
 
 	return &SSTable{
 		fname: "",
 		kv:    mt.kv,
-		bs:    blockSz,
 		index: make(map[string][]byte)}
 }
 
 // WriteSSTableToDisk : writes a SStable to disk
-func (ss *SSTable) WriteSSTableToDisk() error {
+func (kvs *KVStore) WriteSSTableToDisk(ss *SSTable) error {
 	log.Printf("Writing SSTable to disk")
 
+	log.Printf("Creating file for SSTable")
 	ss.fname = ss.createFileName()
 	file, err := os.Create(ss.fname)
+
+	log.Printf("Encoding SSTable data to bytes")
+	ssEncoded := Encode(ss)
 
 	if err != nil {
 		panic(err)
 	}
 
-	nb, err := file.Write([]byte{1, 2, 3})
-	log.Printf("Number of bytes written: %d", nb)
+	log.Printf("Checking status of level one of LSM tree")
+	_, present := kvs.components[1]
 
-	// TODO encode sstable data to bytes?
-	// if n, err := file.Write(); err != nil {
-	// 	return err
-	// }
+	if !present {
+		log.Printf("Level one of LSM tree does not exist yet. Flushing immediately")
+		nb, err := file.Write(ssEncoded)
 
-	ss.MergeSort()
+		if err != nil {
+			return err
+		}
+
+		log.Printf("Number of bytes written: %d", nb)
+	} else {
+		kvs.MergeSSTable(ss)
+	}
 
 	return nil
 }
 
-// createFileName : set up file name where data will initially be written to
+// createFileName : set up file name where data will be written to
 func (ss *SSTable) createFileName() string {
-
-	return "foo.data"
+	// TODO
+	return "0100.data"
 }
 
-// MergeSort : merges an SStable into existing disk structure
-func (ss *SSTable) MergeSort() error {
-	// TODO - implement merge sort - combine with compaction func?
+// MergeSSTable : merges an SStable into existing disk structure
+func (kvs *KVStore) MergeSSTable(ss *SSTable) error {
+
+	maxComponents := 1 * kvs.fanout // TODO - determine when / how a level has reached max components
+
+	if kvs.components[1] == maxComponents {
+		// TODO - level 1 merged into level 2
+		// C0 is now level 1
+	}
 
 	return nil
 }

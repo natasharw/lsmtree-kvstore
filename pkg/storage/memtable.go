@@ -12,8 +12,9 @@ const (
 
 // Memtable : in-memory mutable data structure: here a sorted map of key-value pairs
 type Memtable struct {
-	kv  map[string][]byte
-	max int
+	kv       map[string][]byte
+	approxSz int
+	max      int
 }
 
 /*
@@ -24,8 +25,9 @@ WRITE OPERATIONS
 func MemtableInit() (m *Memtable) {
 	log.Printf("Creating a memtable (C0)")
 	memAddress := &Memtable{
-		kv:  make(map[string][]byte),
-		max: MaxMem}
+		kv:       make(map[string][]byte),
+		approxSz: 0,
+		max:      MaxMem}
 	log.Printf("Key-value store initialised with a memtable")
 
 	return memAddress
@@ -37,11 +39,12 @@ func (mt *Memtable) InsertToMemtable(key string, value []byte) (int error) {
 
 	log.Printf("Handling setting key \"%s\" in memtable", key)
 
-	value, p, err := mt.SearchMemtable(key)
+	_, present, err := mt.SearchMemtable(key)
 
-	if !p {
-		log.Printf("Key \"%s\" does not exist in memtable already", key)
+	if !present {
 		err := mt.insertKey(key)
+		mt.approxSz++
+
 		if err != nil {
 			return errors.New("Failed to insert key in memtable")
 		}
@@ -57,9 +60,10 @@ func (mt *Memtable) InsertToMemtable(key string, value []byte) (int error) {
 }
 
 // insertKey : inserts key in correct place in memtable using binary search
-// [TODO] - binary search to insert key in correct place
 func (mt *Memtable) insertKey(key string) error {
 	log.Printf("Finding correct place for key \"%s\" in memtable", key)
+
+	// [TODO] - binary search to insert key in correct place
 
 	return nil
 }
@@ -76,14 +80,14 @@ func (mt *Memtable) setValueOnKey(key string, value []byte) error {
 // IsMemtableFull : returns true if memtable entries equals max constant
 func (mt *Memtable) IsMemtableFull() bool {
 	log.Printf("Checking if memtable is full")
-	mtEntries := len(mt.kv)
-	if mtEntries < mt.max {
-		log.Printf("Memtable not full. Status: %d out of max %d", mtEntries, mt.max)
+
+	if mt.approxSz < mt.max {
+		log.Printf("Memtable not full. Approx size: %d Max: %d", mt.approxSz, mt.max)
 
 		return false
 	}
 
-	log.Printf("Memtable is full. Status: %d out of max %d", mtEntries, mt.max)
+	log.Printf("Memtable is full. Approx size: %d Max: %d", mt.approxSz, mt.max)
 
 	return true
 }
@@ -96,14 +100,14 @@ READ OPERATIONS
 func (mt *Memtable) SearchMemtable(key string) ([]byte, bool, error) {
 	log.Printf("Searching memtable for key \"%s\"", key)
 
-	value, p := mt.kv[key]
+	value, present := mt.kv[key]
 
-	if !p {
-		log.Printf("%s key not found in memtable", key)
+	if !present {
+		log.Printf("Key %s not found in memtable", key)
 		return nil, false, nil
 	}
 
-	log.Printf("Found value \"%v\" for key \"%s\"", value, key)
+	log.Printf("Found value \"%s\" (\"%v\") for key \"%s\"", value, value, key)
 	return value, true, nil
 
 }

@@ -9,16 +9,17 @@ const (
 	fanout int = 2
 )
 
-type storage interface {
+// Store : generic store must be able to get and set key-value pairs
+type Store interface {
 	Get(key string) ([]byte, error)
-	Set(key string, value []byte) error
+	Set(key string, value string) error
 }
 
 // KVStore : represents the entirety of a key-value store
 type KVStore struct {
-	buffer *Memtable
-	levels int
-	fanout int
+	buffer     *Memtable
+	fanout     int
+	components map[int]int
 }
 
 // NewKVStore : instantiates a new key-value store with some default values
@@ -26,10 +27,14 @@ func NewKVStore() *KVStore {
 	log.Printf("Instantiating a new key-value store")
 	log.Printf("Setting attributes: Memtable as buffer and level growth factor of %d", fanout)
 
-	mt := new(Memtable)
+	mt := MemtableInit()
 	kvs := &KVStore{
-		buffer: mt,
-		fanout: fanout}
+		buffer:     mt,
+		fanout:     fanout,
+		components: make(map[int]int)}
+
+	// memtable buffer represents one component in top level of kvs
+	kvs.components[0] = 1
 
 	log.Printf("Key-value store instantiated")
 	return kvs
@@ -44,7 +49,7 @@ func (kvs *KVStore) Set(key string, value string) error {
 	log.Printf("Setting key %s", key)
 	mt := kvs.buffer
 
-	val := StrToBytes(value)
+	val := Encode(value)
 
 	mt.InsertToMemtable(key, val)
 
@@ -68,7 +73,7 @@ func (kvs *KVStore) Set(key string, value string) error {
 func (kvs *KVStore) Flush() error {
 	// TODO : create a new memtable while the last one is being written?
 	ss := kvs.buffer.NewSSTable()
-	ss.WriteSSTableToDisk()
+	kvs.WriteSSTableToDisk(ss)
 
 	return nil
 }
@@ -115,17 +120,21 @@ func (kvs *KVStore) searchDisk(key string) ([]byte, error) {
 
 // loadIndices : loads indices of SStables into local memory
 func (kvs *KVStore) loadIndices() (map[string][]byte, error) {
-	// TODO ; for each SSTable, load its block index (key-off pairs) into a structure in local memory
-	// TODO ; load all -> search one by one or load one -> search one
+
 	indices := make(map[string][]byte)
+
+	// TODO ; for each SSTable, load its block index (key-off pairs) into a structure in local memory
+	// load all -> search one by one or load one -> search one ?
 
 	return indices, nil
 }
 
 // searchIndices : searches through key-offset pairs of all sstables in local memory
 func (kvs *KVStore) searchIndices(map[string][]byte) (map[string]map[string][]byte, error) {
-	// TO DO - search through ss-tables from most recent to least recent
+
 	var r map[string]map[string][]byte
+
+	// TODO - search through SStables from top level to bottom
 
 	result := r
 
@@ -153,6 +162,7 @@ OTHER OPERATIONS
 // compaction : reorganises SSTables between levels of the tree to store efficiently
 func (kvs *KVStore) compaction() error {
 	return nil
+
 	// TODO implement a mergesort between sorted arrays
 
 	// if l1 is None: return l2
