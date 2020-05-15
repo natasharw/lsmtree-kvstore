@@ -6,11 +6,11 @@ import (
 	"log"
 )
 
-// StrToBytes : Takes a string and encodes to bytes
-func StrToBytes(str string) []byte {
-	log.Printf("Encoding string %s to bytes", str)
+// Encode : Takes an undefined input and encodes to bytes
+func Encode(input interface{}) []byte {
+	log.Printf("Encoding input to bytes. Input: %s", input)
 	buff := &bytes.Buffer{}
-	gob.NewEncoder(buff).Encode(str)
+	gob.NewEncoder(buff).Encode(input)
 	bs := buff.Bytes()
 	log.Printf("Successfully encoded. Result: %v", bs)
 	return bs
