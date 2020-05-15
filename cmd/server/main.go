@@ -12,13 +12,14 @@ import (
 
 func main() {
 	fmt.Println("Welcome to the key-value store. Initialising...")
-	store := storage.NewKVStore()
+	var store storage.Store
+	store = storage.NewKVStore()
 	fmt.Println("Ready")
 	run(store)
 	defer fmt.Println("Exiting key-value store")
 }
 
-func run(store *storage.KVStore) {
+func run(store storage.Store) {
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("Enter command: ")
@@ -31,7 +32,7 @@ func run(store *storage.KVStore) {
 	}
 }
 
-func process(cmd string, store *storage.KVStore) {
+func process(cmd string, store storage.Store) {
 	c := strings.Fields(cmd)
 	switch c[0] {
 	case "get":
