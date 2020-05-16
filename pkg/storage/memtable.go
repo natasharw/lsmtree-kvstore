@@ -28,7 +28,7 @@ func MemtableInit() (m *Memtable) {
 		kv:       make(map[string][]byte),
 		approxSz: 0,
 		max:      MaxMem}
-	log.Printf("Key-value store initialised with a memtable")
+	log.Printf("New memtable successfully created")
 
 	return memAddress
 
@@ -44,14 +44,12 @@ func (mt *Memtable) InsertToMemtable(key string, value []byte) (int error) {
 	if !present {
 		err := mt.insertKey(key)
 		mt.approxSz++
-
 		if err != nil {
 			return errors.New("Failed to insert key in memtable")
 		}
 	}
 
 	err = mt.setValueOnKey(key, value)
-
 	if err != nil {
 		return errors.New("Failed to set value against key in memtable")
 	}
@@ -61,7 +59,7 @@ func (mt *Memtable) InsertToMemtable(key string, value []byte) (int error) {
 
 // insertKey : inserts key in correct place in memtable using binary search
 func (mt *Memtable) insertKey(key string) error {
-	log.Printf("Finding correct place for key \"%s\" in memtable", key)
+	log.Printf("Finding correct place for key \"%s\" in memtable...", key)
 
 	// [TODO] - binary search to insert key in correct place
 
@@ -86,7 +84,6 @@ func (mt *Memtable) IsMemtableFull() bool {
 
 		return false
 	}
-
 	log.Printf("Memtable is full. Approx size: %d Max: %d", mt.approxSz, mt.max)
 
 	return true
@@ -98,7 +95,7 @@ READ OPERATIONS
 
 // SearchMemtable : given a key, tries to find an entry for it in memtable
 func (mt *Memtable) SearchMemtable(key string) ([]byte, bool, error) {
-	log.Printf("Searching memtable for key \"%s\"", key)
+	log.Printf("Searching memtable for key \"%s\"...", key)
 
 	value, present := mt.kv[key]
 
