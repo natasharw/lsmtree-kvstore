@@ -13,7 +13,7 @@ import (
 func main() {
 	fmt.Println("Welcome to the key-value store. Initialising...")
 	var store storage.Store
-	store = storage.NewKVStore()
+	store = storage.KVStoreInit()
 	fmt.Println("Ready")
 	run(store)
 	defer fmt.Println("Exiting key-value store")
