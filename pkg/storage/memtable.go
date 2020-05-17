@@ -10,101 +10,102 @@ const (
 	MaxMem int = 1000
 )
 
-// Memtable : in-memory mutable data structure: here a sorted map of key-value pairs
-type Memtable struct {
-	kv       map[string][]byte
-	approxSz int
-	max      int
+// MemtableInit : creates a memtable in local memory
+func MemtableInit() (m *LsmNode) {
+	log.Printf("Creating a memtable (C0)")
+
+	pairs := []Pair{}
+
+	memtable := &LsmNode{
+		fname:    "",
+		lvl:      0,
+		kv:       pairs,
+		approxSz: 0,
+		maxSz:    MaxMem,
+		minKey:   0,
+		maxKey:   0}
+	log.Printf("New memtable successfully created")
+
+	return memtable
 }
 
 /*
 WRITE OPERATIONS
 */
 
-// MemtableInit : creates a memtable in local memory
-func MemtableInit() (m *Memtable) {
-	log.Printf("Creating a memtable (C0)")
-	memAddress := &Memtable{
-		kv:       make(map[string][]byte),
-		approxSz: 0,
-		max:      MaxMem}
-	log.Printf("New memtable successfully created")
-
-	return memAddress
-
-}
-
 // InsertToMemtable : inserts a key and value to memtable
-func (mt *Memtable) InsertToMemtable(key string, value []byte) (int error) {
+func (lsmtree *LsmTree) InsertToMemtable(pair *Pair) error {
 
-	log.Printf("Handling setting key \"%s\" in memtable", key)
+	log.Printf("Handling setting key %v in memtable", pair.key)
 
-	_, present, err := mt.SearchMemtable(key)
+	memtable := lsmtree.lvls[0].files[0]
+	existing, present, err := memtable.SearchNode(pair.key)
 
 	if !present {
-		err := mt.insertKey(key)
-		mt.approxSz++
+		err := lsmtree.insertPairToMemtable(pair)
 		if err != nil {
 			return errors.New("Failed to insert key in memtable")
 		}
-	}
 
-	err = mt.setValueOnKey(key, value)
-	if err != nil {
-		return errors.New("Failed to set value against key in memtable")
+		lsmtree.lvls[0].files[0].updateMinOrMax(pair.key)
+
+	} else {
+		err = lsmtree.setValueOnPair(existing, pair.value)
+		if err != nil {
+			return errors.New("Failed to set value against key in memtable")
+		}
 	}
 
 	return nil
 }
 
 // insertKey : inserts key in correct place in memtable using binary search
-func (mt *Memtable) insertKey(key string) error {
-	log.Printf("Finding correct place for key \"%s\" in memtable...", key)
+func (lsmtree *LsmTree) insertPairToMemtable(pair *Pair) error {
+	log.Printf("Finding correct place for key %v in memtable...", pair.key)
 
+	memtable := lsmtree.lvls[0].files[0]
+	memtable.kv = append(memtable.kv, *pair)
+
+	memtable.approxSz++
 	// [TODO] - binary search to insert key in correct place
 
 	return nil
 }
 
 // setValueOnKey : sets a value against a key in a memtable
-func (mt *Memtable) setValueOnKey(key string, value []byte) error {
-	log.Printf("Setting value of key \"%s\" in memtable", key)
-	mt.kv[key] = value
-	log.Printf("Successfully set key \"%s\" to %v in memtable", key, value)
+func (lsmtree *LsmTree) setValueOnPair(pair *Pair, value int) error {
+	log.Printf("Setting value of key %v in memtable", pair.key)
+	pair.value = value
+	log.Printf("Successfully set key %v to %v", pair.key, value)
 
 	return nil
 }
 
+func (node *LsmNode) updateMinOrMax(key int) {
+	if key < node.minKey {
+		node.minKey = key
+		log.Printf("Updated min key of node to %v", key)
+	} else if key > node.maxKey {
+		node.maxKey = key
+		log.Printf("Updated max key of node to %v", key)
+	}
+}
+
 // IsMemtableFull : returns true if memtable entries equals max constant
-func (mt *Memtable) IsMemtableFull() bool {
+func (lsmtree *LsmTree) IsMemtableFull() bool {
 	log.Printf("Checking if memtable is full")
 
-	if mt.approxSz < mt.max {
-		log.Printf("Memtable not full. Approx size: %d Max: %d", mt.approxSz, mt.max)
+	memtable := lsmtree.lvls[0].files[0]
+	if memtable.approxSz < memtable.maxSz {
+		log.Printf("Memtable not full. Approx size: %v Max size: %v", memtable.approxSz, memtable.maxSz)
 
 		return false
 	}
-	log.Printf("Memtable is full. Approx size: %d Max: %d", mt.approxSz, mt.max)
+	log.Printf("Memtable is full. Approx size: %v Max size: %v", memtable.approxSz, memtable.maxSz)
 
 	return true
 }
 
-/*
-READ OPERATIONS
-*/
-
-// SearchMemtable : given a key, tries to find an entry for it in memtable
-func (mt *Memtable) SearchMemtable(key string) ([]byte, bool, error) {
-	log.Printf("Searching memtable for key \"%s\"...", key)
-
-	value, present := mt.kv[key]
-
-	if !present {
-		log.Printf("Key %s not found in memtable", key)
-		return nil, false, nil
-	}
-
-	log.Printf("Found value \"%s\" (\"%v\") for key \"%s\"", value, value, key)
-	return value, true, nil
-
-}
+// /*
+// READ OPERATIONS - stored in Lsm file
+// */
