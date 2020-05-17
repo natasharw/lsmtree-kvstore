@@ -10,34 +10,31 @@ import (
 	"time"
 )
 
-// SSTable : represents a Sorted String Table on disk (kv : key-value pairs; index : key-offset pairs)
-type SSTable struct {
-	fname string
-	kv    map[string][]byte
-	index map[string][]byte
-}
+// /*
+// WRITE OPERATIONS
+// */
 
-/*
-WRITE OPERATIONS
-*/
-
-// SSTableInit : creates new SStable from a sorted set of key-value pairs
-func SSTableInit(kv map[string][]byte) (sst *SSTable) {
+// SSTableFromMemtable : creates a new SSTable node given memtable data
+func (lsmtree *LsmTree) SSTableFromMemtable(memtable *LsmNode) (sst *LsmNode) {
 
 	log.Printf("Creating new SSTable")
 
 	fname := sst.createFileName()
 
-	return &SSTable{
-		fname: fname,
-		kv:    kv,
-		index: make(map[string][]byte)}
+	sstable := &LsmNode{
+		fname:    fname,
+		lvl:      memtable.lvl + 1,
+		kv:       memtable.kv,
+		approxSz: memtable.approxSz,
+		maxSz:    memtable.maxSz,
+		minKey:   memtable.minKey,
+		maxKey:   memtable.maxKey}
 
-	// TODO group records into blocks?
+	return sstable
 }
 
 // createFileName : set up file name where data will be written to
-func (sst *SSTable) createFileName() string {
+func (sst *LsmNode) createFileName() string {
 	log.Printf("Creating file name")
 
 	fileName := filepath.Join(
@@ -50,7 +47,7 @@ func (sst *SSTable) createFileName() string {
 }
 
 // WriteSSTableToDisk : writes a SStable to disk
-func (kvs *KVStore) WriteSSTableToDisk(sst *SSTable) error {
+func (lsmtree *LsmTree) WriteSSTableToDisk(sst *LsmNode) error {
 	log.Printf("Writing SSTable to disk...")
 
 	log.Printf("Creating new file")
@@ -59,13 +56,15 @@ func (kvs *KVStore) WriteSSTableToDisk(sst *SSTable) error {
 		panic(err)
 	}
 
-	log.Printf("Encoding SSTable data...")
-	sstEncoded := Encode(sst)
+	log.Printf("Encoding SSTable data")
+	sstEncoded, err := json.Marshal(sst)
+	if err != nil {
+		return err
+	}
 
 	log.Printf("Checking status of level one of LSM tree")
-	_, present := kvs.manifest.components[1]
 
-	if !present {
+	if len(lsmtree.lvls) < 2 { // TODO - change to map index check
 		log.Printf("Level one of LSM tree does not exist yet. Flushing immediately")
 		nb, err := file.Write(sstEncoded)
 		if err != nil {
@@ -74,22 +73,25 @@ func (kvs *KVStore) WriteSSTableToDisk(sst *SSTable) error {
 
 		log.Printf("Number of bytes written: %d", nb)
 	} else {
-		kvs.MergeSSTable(sst)
+		lsmtree.MergeSSTable(sst)
 	}
 
 	return nil
 }
 
-// MergeSSTable : merges an SStable into existing disk structure
-func (kvs *KVStore) MergeSSTable(ssy *SSTable) error {
+// MergeSSTable : recursively merge an SStable into existing disk structure
+func (lsmtree *LsmTree) MergeSSTable(sst *LsmNode) error {
 
-	maxComponents := 1 * kvs.fanout // TODO - determine when / how a level has reached max components
+	desiredLevel := sst.lvl + 1
+	maxComponents := desiredLevel * lsmtree.grwthFctr
 
-	if kvs.manifest.components[1] == maxComponents {
-		// TODO - level 1 merged into level 2
-		// C0 is now level 1
+	// base case
+	if maxComponents > len(lsmtree.lvls[1].files) {
+		// sstable can be moved to level below with no drama.
+		return nil
 	}
 
+	// TODO - else we need to flowing merge the components on the level below until one of them has not got max components
 	return nil
 }
 
@@ -97,8 +99,8 @@ func (kvs *KVStore) MergeSSTable(ssy *SSTable) error {
 READ OPERATIONS
 */
 
-// GetValue : read disk from approximate starting point to locate key and return its value
-func (sst *SSTable) GetValue(key string) []byte {
+// GetPair : read disk from approximate starting point to locate key and return its pair
+func (sst *LsmNode) GetPair(key int) *Pair {
 
 	log.Printf("Creating key-value from SSTable: %s", sst.fname)
 
@@ -111,7 +113,7 @@ func (sst *SSTable) GetValue(key string) []byte {
 	defer func() {
 		if err = file.Close(); err != nil {
 			log.Fatal(err)
-		}
+		} // close the file as destructor
 	}()
 
 	log.Printf("Creating new file scanner")
@@ -119,18 +121,19 @@ func (sst *SSTable) GetValue(key string) []byte {
 	log.Printf("Scanning...")
 	scanner.Scan()
 
-	// text := scanner.Text()
-	data := scanner.Bytes()
+	data := scanner.Bytes() // text := scanner.Text()
 
-	sstable := SSTable{}
+	sstable := LsmNode{}
 
 	log.Printf("Decoding")
-	decoded := json.Unmarshal(data, sstable) //TODO
-	// decoded := DecodeToSST(data)
-	log.Printf("Decoded")
+	decoded := json.Unmarshal(data, sstable)
 	fmt.Printf("%v", decoded)
+	pair, presence, err := sstable.SearchNode(key) // TODO - sstable is decoded data
 
-	// TODO - can access the SSTable as bytes - need to decode back to SSTable format first or access key-value and decode only this?
+	if !presence {
+		log.Printf("No key-value pair for key %v found :(", key)
+		return nil
+	}
 
-	return data
+	return pair
 }
