@@ -1,14 +1,17 @@
 package storage
 
 import (
+	"fmt"
 	"log"
 	"os"
 )
 
-const (
-	// grwthFctr : ratio between levels of LSM-tree e.g. C2 = C1 * fanout
-	grwthFctr int = 2
-)
+const grwthFctr int = 2 // grwthFctr : ratio between levels of LSM-tree e.g. C2 = C1 * grwthFctr
+const kvSz int = 1000   // kvSz : max key-value pairs in block [TODO - tuning of size]
+const nodeSz int = 10   // nodeSz : max blocks in node [TODO - tuning of size]
+
+var initComponents []*LsmNode
+var lsmTree *LsmTree
 
 // Storage : generic store must be able to get and set key-value pairs
 type Storage interface {
@@ -22,31 +25,38 @@ type Pair struct {
 	value int
 }
 
-// LsmNode : a file / SSTable or the buffer
+// LsmBlock : a fixed size chunk of key-value pairs
+type LsmBlock struct {
+	kv     []*Pair
+	minKey int
+	maxKey int
+}
+
+// LsmNode : a file (SSTable) or the buffer (memtable)
 type LsmNode struct {
 	fname    string
 	lvl      int
-	kv       []Pair
+	blocks   []*LsmBlock
+	indices  (map[string][]byte)
 	approxSz int
-	maxSz    int
-	minKey   int // the min key in the file
-	maxKey   int // the max key in the file
+	minKey   int
+	maxKey   int
 }
 
-// LsmLevel : a conceptual hierachical level which comprises of a bunch of nodes
+// LsmLevel : hierachical level within tree
 type LsmLevel struct {
-	lvl       int
-	files     []*LsmNode // an array of pointers to actual files within level
-	fileCount int
-	next      *LsmLevel
+	lvl            int
+	components     []*LsmNode
+	componentCount int
+	next           *LsmLevel
 }
 
-// LsmTree : the whole tree
+// LsmTree : meta-data about tree and pointer to root
 type LsmTree struct {
-	lvls      []LsmLevel
 	lvlCount  int
 	grwthFctr int
 	entries   int
+	root      *LsmLevel
 }
 
 // LsmTreeInit : initalises a LSM tree
@@ -54,21 +64,16 @@ func LsmTreeInit() *LsmTree {
 	log.Printf("Instantiating a new LSM tree...")
 
 	memtable := MemtableInit()
-	initComponents := []*LsmNode{}
-	initComponents = append(initComponents, memtable)
-
-	l0 := LsmLevel{
-		lvl:       0,
-		files:     initComponents,
-		fileCount: 1,
-		next:      nil}
-
-	initLevels := []LsmLevel{}
-	initLevels = append(initLevels, l0) // init a memtable component, and this is only initial level
+	initComponents = []*LsmNode{memtable}
+	l0 := &LsmLevel{
+		lvl:            0,
+		components:     initComponents,
+		componentCount: 1,
+		next:           nil}
 
 	log.Printf("Initial attributes: Memtable added as buffer (CO/LO), level growth factor %d", grwthFctr)
-	lsmtree := &LsmTree{
-		lvls:      initLevels,
+	lsmTree = &LsmTree{
+		root:      l0,
 		lvlCount:  1,
 		grwthFctr: grwthFctr,
 		entries:   0}
@@ -77,7 +82,7 @@ func LsmTreeInit() *LsmTree {
 	os.Mkdir("lsmtree", 0777)
 
 	log.Printf("LSM tree succesfully instantiated")
-	return lsmtree
+	return lsmTree
 }
 
 // Set : Main function to set a key in the key-value store
@@ -96,7 +101,6 @@ func (lsmtree *LsmTree) Set(key int, value int) error {
 			return err
 		}
 	}
-
 	log.Printf("Congrats! %v: %v successfully stored", key, value)
 
 	return nil
@@ -106,9 +110,9 @@ func (lsmtree *LsmTree) Set(key int, value int) error {
 func (lsmtree *LsmTree) Flush() error {
 	log.Printf("Starting flush...")
 
-	memtable := lsmtree.lvls[0].files[0]
+	memtable := lsmtree.root
 	sst := lsmtree.SSTableFromMemtable(memtable)
-	lsmtree.lvls[0].files[0] = MemtableInit() // create new empty memtable
+	lsmtree.root.components[0] = MemtableInit() // create new empty memtable
 	log.Printf("Stored memtable and fresh empty memtable created. Ready for write")
 
 	lsmtree.WriteSSTableToDisk(sst)
@@ -120,9 +124,8 @@ func (lsmtree *LsmTree) Flush() error {
 func (lsmtree *LsmTree) Get(key int) (int, error) {
 	log.Printf("Getting key %v", key)
 
-	memtable := lsmtree.lvls[0].files[0]
+	memtable := lsmtree.root.components[0]
 	result, present, err := memtable.SearchNode(key)
-
 	if err != nil {
 		return 0, err
 	}
@@ -143,17 +146,19 @@ func (lsmtree *LsmTree) Get(key int) (int, error) {
 func (lsmnode *LsmNode) SearchNode(key int) (*Pair, bool, error) {
 	log.Printf("Searching node for key %v...", key)
 
+	fmt.Printf("%v", lsmnode)
+
 	pairs := lsmnode.kv
 
 	for i := range pairs {
 		if pairs[i].key == key {
 			log.Printf("Found value %v for key %v", pairs[i].value, key)
-			return &pairs[i], true, nil
+			return pairs[i], true, nil
 		}
 	}
 	// TODO - cursor to skip over file to relevant starting place
 
-	log.Printf("Key %v not found in memtable", key)
+	log.Printf("Key %v not found in key-value pairs", key)
 
 	return nil, false, nil
 }

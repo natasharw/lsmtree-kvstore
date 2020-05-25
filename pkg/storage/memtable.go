@@ -5,21 +5,16 @@ import (
 	"log"
 )
 
-const (
-	// MaxMem : sets the maximum amount of key-value pairs before memtable flushes to disk
-	MaxMem int = 1000
-)
+var initPairs []*Pair
 
 // MemtableInit : creates a memtable in local memory
 func MemtableInit() (m *LsmNode) {
 	log.Printf("Creating a memtable (C0)")
 
-	pairs := []Pair{}
-
 	memtable := &LsmNode{
 		fname:    "",
 		lvl:      0,
-		kv:       pairs,
+		kv:       initPairs,
 		approxSz: 0,
 		maxSz:    MaxMem,
 		minKey:   0,
@@ -64,7 +59,7 @@ func (lsmtree *LsmTree) insertPairToMemtable(pair *Pair) error {
 	log.Printf("Finding correct place for key %v in memtable...", pair.key)
 
 	memtable := lsmtree.lvls[0].files[0]
-	memtable.kv = append(memtable.kv, *pair)
+	memtable.kv = append(memtable.kv, pair)
 
 	memtable.approxSz++
 	// [TODO] - binary search to insert key in correct place
